@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Student Information Form</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Minimal inline styles for error hints (you can move these to style.css) */
+    .error-text {
+      color: #f44336;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .valid-text {
+      color: #4caf50;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    input.invalid, select.invalid {
+      outline: 2px solid #f44336;
+    }
+    input.valid, select.valid {
+      outline: 2px solid #4caf50;
+    }
+  </style>
+</head>
+<body>
+  <h1>Student Information Form</h1>
+
+  <form id="studentForm" onsubmit="return false;">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="rollNo">Roll No *</label>
+        <input type="number" id="rollNo" required />
+        <div id="rollNoError" class="error-text" aria-live="polite"></div>
+      </div>
+      <div class="form-group">
+        <label for="name">Name *</label>
+        <input
+          type="text"
+          id="name"
+          required
+          inputmode="text"
+          autocomplete="name"
+          placeholder="Only letters and spaces"
+        />
+        <div id="nameError" class="error-text" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="email">Email *</label>
+        <input type="email" id="email" required />
+        <div id="emailError" class="error-text" aria-live="polite"></div>
+      </div>
+      <div class="form-group">
+        <label for="phone">Phone *</label>
+
+        <div style="display: flex; gap: 6px;">
+          <!-- COUNTRY CODE DROPDOWN -->
+          <select id="countryCode" style="width: 90px;">
+            <option value="+91" selected>+91 (IN)</option>
+            <option value="+1">+1 (US)</option>
+            <option value="+44">+44 (UK)</option>
+            <option value="+61">+61 (AU)</option>
+            <option value="+81">+81 (JP)</option>
+            <option value="+971">+971 (UAE)</option>
+            <!-- You can add more here -->
+          </select>
+
+          <!-- PHONE NUMBER INPUT -->
+          <input
+            type="text"
+            id="phone"
+            inputmode="numeric"
+            maxlength="10"
+            placeholder="10-digit number"
+            required
+          />
+        </div>
+
+        <div id="phoneError" class="error-text" aria-live="polite"></div>
+      </div>
+
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="course">Course *</label>
+        <select id="course" required>
+          <option value="">-- Select Course --</option>
+          <option value="Computer Engineering">Computer Engineering</option>
+          <option value="Information Technology">Information Technology</option>
+          <option value="Electronics & Telecommunication">Electronics & Telecommunication</option>
+          <option value="Mechanical Engineering">Mechanical Engineering</option>
+          <option value="Civil Engineering">Civil Engineering</option>
+        </select>
+        <div id="courseError" class="error-text" aria-live="polite"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="year">Year *</label>
+        <select id="year" required>
+          <option value="">-- Select Year --</option>
+          <option value="FE">First year</option>
+          <option value="SE">Second year</option>
+          <option value="TE">Third year</option>
+          <option value="BE">fourth year</option>
+        </select>
+        <div id="yearError" class="error-text" aria-live="polite"></div>
+      </div>
+    </div>
+
+
+    <div class="buttons">
+      <button type="button" class="btn-submit" onclick="handleSubmit()">Submit</button>
+      <button type="button" class="btn-update" onclick="handleUpdate()">Update</button>
+      <button type="button" class="btn-delete" onclick="handleDelete()">Delete</button>
+      <button type="button" class="btn-clear" onclick="clearForm()">Clear</button>
+    </div>
+
+    <div id="message"></div>
+  </form>
+
+  <h2>Student Records (From Database)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Roll No</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Course</th>
+        <th>Year</th>
+      </tr>
+    </thead>
+    <tbody id="studentTableBody">
+      <!-- Records will be added here dynamically -->
+    </tbody>
+  </table>
+
+  <script>
+    const API_URL = "http://localhost:3000/api/students";
+
+    // Elements
+    const rollNoEl = document.getElementById("rollNo");
+    const nameEl = document.getElementById("name");
+    const emailEl = document.getElementById("email");
+    const phoneEl = document.getElementById("phone");
+    const courseEl = document.getElementById("course");
+    const yearEl = document.getElementById("year");
+    const messageEl = document.getElementById("message");
+
+    // Error containers
+    const errors = {
+      rollNo: document.getElementById("rollNoError"),
+      name: document.getElementById("nameError"),
+      email: document.getElementById("emailError"),
+      phone: document.getElementById("phoneError"),
+      course: document.getElementById("courseError"),
+      year: document.getElementById("yearError")
+    };
+
+    function showMessage(text, type) {
+      messageEl.textContent = text;
+      messageEl.className = type ? type : "";
+    }
+
+    // FIELD VALIDATORS (return true if valid)
+    function validateRollNo() {
+      const val = rollNoEl.value.trim();
+      if (!val) {
+        setInvalid(rollNoEl, errors.rollNo, "Roll No is required.");
+        return false;
+      }
+      const num = Number(val);
+      if (!Number.isInteger(num) || num <= 0) {
+        setInvalid(rollNoEl, errors.rollNo, "Roll No must be a positive integer.");
+        return false;
+      }
+      setValid(rollNoEl, errors.rollNo);
+      return true;
+    }
+
+    function validateName() {
+      const val = nameEl.value.trim();
+      const namePattern = /^[A-Za-z\s]+$/;
+      if (!val) {
+        setInvalid(nameEl, errors.name, "Name is required.");
+        return false;
+      }
+      if (!namePattern.test(val)) {
+        setInvalid(nameEl, errors.name, "Name must contain only letters and spaces.");
+        return false;
+      }
+      setValid(nameEl, errors.name);
+      return true;
+    }
+
+    function validateEmail() {
+      const val = emailEl.value.trim();
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!val) {
+        setInvalid(emailEl, errors.email, "Email is required.");
+        return false;
+      }
+      if (!emailPattern.test(val)) {
+        setInvalid(emailEl, errors.email, "Please enter a valid email address.");
+        return false;
+      }
+      setValid(emailEl, errors.email);
+      return true;
+    }
+
+    function validatePhone() {
+      const val = phoneEl.value.trim();
+      const phonePattern = /^\d{10}$/;
+
+      if (!val) {
+        setInvalid(phoneEl, errors.phone, "Phone is required.");
+        return false;
+      }
+      if (!phonePattern.test(val)) {
+        setInvalid(phoneEl, errors.phone, "Phone must be exactly 10 digits.");
+        return false;
+      }
+
+      setValid(phoneEl, errors.phone, "Looks good.");
+      return true;
+    }
+
+
+    function validateCourse() {
+      const val = courseEl.value;
+      if (!val) {
+        setInvalid(courseEl, errors.course, "Please select a course.");
+        return false;
+      }
+      setValid(courseEl, errors.course);
+      return true;
+    }
+
+    function validateYear() {
+      const val = yearEl.value;
+      if (!val) {
+        setInvalid(yearEl, errors.year, "Please select a year.");
+        return false;
+      }
+      setValid(yearEl, errors.year);
+      return true;
+    }
+
+    // Helpers for UI feedback
+    function setInvalid(el, errorContainer, msg) {
+      el.classList.remove("valid");
+      el.classList.add("invalid");
+      errorContainer.textContent = msg;
+      errorContainer.className = "error-text";
+    }
+
+    function setValid(el, errorContainer, msg) {
+      el.classList.remove("invalid");
+      el.classList.add("valid");
+      errorContainer.textContent = msg;
+      errorContainer.className = "valid-text";
+      // remove the valid message quickly so the UI isn't cluttered (optional)
+      setTimeout(() => {
+        if (errorContainer.classList.contains("valid-text")) {
+          errorContainer.textContent = "";
+          errorContainer.className = "error-text";
+        }
+      }, 1200);
+    }
+
+    // Run validation for each field when user moves away (blur)
+    rollNoEl.addEventListener("blur", validateRollNo);
+    nameEl.addEventListener("blur", validateName);
+    emailEl.addEventListener("blur", validateEmail);
+    phoneEl.addEventListener("blur", validatePhone);
+    courseEl.addEventListener("blur", validateCourse);
+    yearEl.addEventListener("blur", validateYear);
+
+    // Additionally, validate on input for better UX:
+    nameEl.addEventListener("input", () => {
+      // auto-strip numbers/forbidden chars while typing
+      const cleaned = nameEl.value.replace(/[^A-Za-z\s]/g, "");
+      if (cleaned !== nameEl.value) nameEl.value = cleaned;
+    });
+
+    // PHONE input: allow only digits while typing and enforce max 10
+    phoneEl.addEventListener("input", (e) => {
+      // remove any non-digit characters
+      let cleaned = phoneEl.value.replace(/\D/g, "");
+      // enforce max length 10
+      if (cleaned.length > 10) cleaned = cleaned.slice(0, 10);
+      if (cleaned !== phoneEl.value) phoneEl.value = cleaned;
+    });
+
+    // Optionally prevent pasting non-digit content into phone field
+    phoneEl.addEventListener("paste", (e) => {
+      const text = (e.clipboardData || window.clipboardData).getData("text");
+      if (!/^\d+$/.test(text)) {
+        e.preventDefault();
+        // If pasted text contains digits, insert only digits up to 10 chars
+        const digits = text.replace(/\D/g, "").slice(0, 10 - phoneEl.value.length);
+        if (digits) {
+          phoneEl.value = (phoneEl.value + digits).slice(0, 10);
+        }
+      }
+    });
+
+    // Fetch and render table (existing)
+    async function refreshTable() {
+      const tbody = document.getElementById("studentTableBody");
+      tbody.innerHTML = "";
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        data.forEach((s) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${s.rollNo}</td>
+            <td>${s.name}</td>
+            <td>${s.email}</td>
+            <td>${s.phone}</td>
+            <td>${s.course}</td>
+            <td>${s.year || ""}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        showMessage("Failed to load data from server.", "error");
+      }
+    }
+
+    function clearForm() {
+      document.getElementById("studentForm").reset();
+      // clear styles and error messages
+      Object.values(errors).forEach(ec => ec.textContent = "");
+      [rollNoEl, nameEl, emailEl, phoneEl, courseEl, yearEl].forEach(el => {
+        el.classList.remove("invalid", "valid");
+      });
+      showMessage("", "");
+    }
+
+    function getFormData() {
+      return {
+        rollNo: rollNoEl.value.trim(),
+        name: nameEl.value.trim(),
+        email: emailEl.value.trim(),
+        phone: document.getElementById("countryCode").value + " " + phoneEl.value.trim(),
+        course: courseEl.value.trim(),
+        year: yearEl.value.trim(),
+      };
+    }
+
+
+    // Master validation used before submit/update actions:
+    function validateAll() {
+      const v1 = validateRollNo();
+      const v2 = validateName();
+      const v3 = validateEmail();
+      const v4 = validatePhone();
+      const v5 = validateCourse();
+      const v6 = validateYear();
+      return v1 && v2 && v3 && v4 && v5 && v6;
+    }
+
+    // Submit / Update / Delete (same as before, but call validateAll() on submit/update)
+    async function handleSubmit() {
+      const data = getFormData();
+      if (!validateAll()) return;
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        if (!res.ok) {
+          showMessage(result.message || "Error adding record.", "error");
+          return;
+        }
+        showMessage(result.message || "Student record added successfully.", "success");
+        clearForm();
+        refreshTable();
+      } catch (err) {
+        console.error(err);
+        showMessage("Server error while adding record.", "error");
+      }
+    }
+
+    async function handleUpdate() {
+      const data = getFormData();
+      if (!validateAll()) return;
+
+      try {
+        const res = await fetch(`${API_URL}/${data.rollNo}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        const result = await res.json();
+        if (!res.ok) {
+          showMessage(result.message || "Error updating record.", "error");
+          return;
+        }
+
+        showMessage(result.message || "Student record updated successfully.", "success");
+        clearForm();
+        refreshTable();
+      } catch (err) {
+        console.error(err);
+        showMessage("Server error while updating record.", "error");
+      }
+    }
+
+    async function handleDelete() {
+      const rollNo = rollNoEl.value.trim();
+      if (!rollNo) {
+        setInvalid(rollNoEl, errors.rollNo, "Enter Roll No to delete a record.");
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/${rollNo}`, {
+          method: "DELETE",
+        });
+        const result = await res.json();
+        if (!res.ok) {
+          showMessage(result.message || "Error deleting record.", "error");
+          return;
+        }
+        showMessage(result.message || "Student record deleted successfully.", "success");
+        clearForm();
+        refreshTable();
+      } catch (err) {
+        console.error(err);
+        showMessage("Server error while deleting record.", "error");
+      }
+    }
+
+    // Initial load
+    window.addEventListener("load", refreshTable);
+  </script>
+</body>
+</html>
